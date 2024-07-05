@@ -1,0 +1,43 @@
+name: Deploy Kong Staging
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+  
+      - name: Build and Push Docker image using Dockerfile
+        run: |
+          docker buildx build --platform linux/amd64 \
+            --file conf/Dockerfile \
+            --tag ${{ secrets.DOCKERHUB_USERNAME }}/kong-staging:latest \
+            --cache-from type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/kong-staging:cache \
+            --cache-to type=inline \
+            --push .
+        
+      - name: Deploy to Staging
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ secrets.PORT }}
+          script: |
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/kong-staging:latest
+            cd compose/staging/
+            docker-compose -f docker-compose-staging-api-gateway.yml down
+            docker-compose -f docker-compose-staging-api-gateway.yml up -d
