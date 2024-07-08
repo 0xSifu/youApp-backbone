@@ -1,0 +1,6 @@
+[submodule "auth"]
+	path = auth
+	url = https://github.com/0xSifu/youApp-auth
+[submodule "message"]
+	path = message
+	url = https://github.com/0xSifu/youApp-message
